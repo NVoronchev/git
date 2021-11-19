@@ -1635,6 +1635,7 @@ struct module_clone_data {
 	unsigned int dissociate: 1;
 	unsigned int require_init: 1;
 	int single_branch;
+	const char *single_branch_target;
 };
 #define MODULE_CLONE_DATA_INIT { .reference = STRING_LIST_INIT_NODUP, .single_branch = -1 }
 
@@ -1795,10 +1796,14 @@ static int clone_submodule(struct module_clone_data *clone_data)
 			strvec_push(&cp.args, "--dissociate");
 		if (sm_gitdir && *sm_gitdir)
 			strvec_pushl(&cp.args, "--separate-git-dir", sm_gitdir, NULL);
-		if (clone_data->single_branch >= 0)
+		if (clone_data->single_branch >= 0) {
 			strvec_push(&cp.args, clone_data->single_branch ?
 				    "--single-branch" :
 				    "--no-single-branch");
+			if (clone_data->single_branch)
+				strvec_pushl(&cp.args,
+				"--branch", clone_data->single_branch_target, NULL);
+		}
 
 		strvec_push(&cp.args, "--");
 		strvec_push(&cp.args, clone_data->url);
@@ -3088,6 +3093,11 @@ static int add_submodule(const struct add_data *add_data)
 		if (add_data->depth >= 0)
 			clone_data.depth = xstrfmt("%d", add_data->depth);
 
+		if (add_data->branch) {
+			clone_data.single_branch_target = add_data->branch;
+			clone_data.single_branch = 1;
+		}
+		
 		if (clone_submodule(&clone_data))
 			return -1;
 
